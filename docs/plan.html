@@ -1,0 +1,439 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="description" content="Architecture, implementation steps, acceptance gates, and verified progress for the transferable skills matching system.">
+  <meta name="color-scheme" content="light">
+  <title>Skills Matching — Implementation Plan</title>
+  <style>
+    :root {
+      --paper: #fff9ee; --card: #fffdf8; --ink: #25271f; --muted: #626458;
+      --line: #deded0; --accent: #923b20; --soft: #f7e8df; --green: #355b39;
+      --green-soft: #edf3e7; --blue: #285568; --blue-soft: #eaf1f4;
+    }
+    * { box-sizing: border-box; }
+    html { scroll-behavior: smooth; scroll-padding-top: 24px; }
+    body { margin: 0; background: var(--paper); color: var(--ink); font: 16px/1.65 system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif; }
+    a { color: var(--accent); text-underline-offset: 4px; }
+    a:hover { text-decoration-thickness: 2px; }
+    :focus-visible { outline: 3px solid var(--blue); outline-offset: 4px; }
+    .skip { position: absolute; left: 16px; top: -100px; padding: 12px; background: white; z-index: 5; }
+    .skip:focus { top: 12px; }
+    .shell { max-width: 1180px; margin: auto; padding: 0 32px; }
+    .topbar { display: flex; justify-content: space-between; align-items: center; gap: 20px; padding-block: 26px; border-bottom: 1px solid var(--line); }
+    .brand { font-weight: 750; letter-spacing: -.04em; font-size: 20px; }
+    .eyebrow { font-size: 12px; font-weight: 750; letter-spacing: .13em; text-transform: uppercase; color: var(--accent); }
+    .tag { display: inline-block; padding: 5px 12px; border: 1px solid var(--line); border-radius: 99px; font-size: 12px; font-weight: 650; }
+    header { padding-block: 55px 32px; }
+    h1 { max-width: 850px; font-size: clamp(36px, 5vw, 64px); line-height: 1.08; letter-spacing: -.055em; margin: 14px 0 23px; }
+    h2 { font-size: 28px; letter-spacing: -.035em; line-height: 1.25; margin: 0 0 18px; }
+    h3 { font-size: 18px; line-height: 1.35; margin: 25px 0 10px; }
+    p { margin: 10px 0 18px; }
+    .lead { max-width: 780px; font-size: 19px; color: var(--muted); }
+    .muted, .meta { color: var(--muted); }
+    .meta { font-size: 13px; }
+    .tags, nav { display: flex; flex-wrap: wrap; gap: 9px; }
+    nav { margin-block: 28px 0; gap: 12px 24px; font-size: 14px; }
+    nav a { font-weight: 650; }
+    section { margin-block: 48px; }
+    .card { background: var(--card); border: 1px solid var(--line); border-radius: 20px; padding: 28px; }
+    .grid { display: grid; grid-template-columns: 1fr 1fr; gap: 18px; }
+    .progress-card { background: var(--ink); color: #fffdf8; }
+    .progress-card .meta { color: #d7dacd; }
+    .progress-top { display: flex; justify-content: space-between; align-items: baseline; gap: 18px; }
+    .progress-top strong { font-size: 30px; letter-spacing: -.04em; }
+    progress { display: block; width: 100%; height: 10px; margin: 18px 0; border: 0; border-radius: 99px; overflow: hidden; accent-color: #c3da92; background: #505449; }
+    progress::-webkit-progress-bar { background: #505449; }
+    progress::-webkit-progress-value { background: #c3da92; }
+    progress::-moz-progress-bar { background: #c3da92; }
+    .callout { border-left: 3px solid var(--accent); background: var(--soft); padding: 16px 20px; border-radius: 0 12px 12px 0; }
+    .callout p:last-child, .card p:last-child { margin-bottom: 0; }
+    ul, ol { padding-left: 22px; }
+    li { margin-block: 8px; }
+    code { font-size: .88em; overflow-wrap: anywhere; background: #efeee4; padding: 2px 5px; border-radius: 4px; }
+    .table-wrap { overflow-x: auto; border: 1px solid var(--line); border-radius: 14px; }
+    table { border-collapse: collapse; width: 100%; font-size: 14px; background: var(--card); }
+    caption { text-align: left; padding: 15px 18px; font-weight: 700; background: #f3f0e5; }
+    th, td { padding: 14px 18px; border-bottom: 1px solid var(--line); text-align: left; vertical-align: top; }
+    th { background: #f3f0e5; font-size: 12px; text-transform: uppercase; letter-spacing: .05em; }
+    tr:last-child td { border-bottom: 0; }
+    td:first-child { min-width: 170px; font-weight: 650; }
+    .journey { display: flex; flex-wrap: wrap; gap: 8px; list-style: none; padding: 0; }
+    .journey li { background: var(--blue-soft); border: 1px solid #c6d8df; padding: 9px 13px; border-radius: 10px; font-size: 14px; color: var(--blue); }
+    .journey li:not(:last-child)::after { content: " →"; margin-left: 10px; }
+    .toolbar { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-block: 20px; }
+    button, select, input { font: inherit; color: inherit; border: 1px solid #a2a596; border-radius: 9px; padding: 9px 12px; background: var(--card); }
+    button { cursor: pointer; }
+    button:hover { background: #efeee4; }
+    input { width: min(100%, 340px); }
+    .toolbar label { font-size: 13px; font-weight: 650; }
+    details.phase { background: var(--card); border: 1px solid var(--line); border-radius: 16px; margin-block: 16px; overflow: hidden; }
+    summary { cursor: pointer; padding: 23px 26px; }
+    summary::marker { color: var(--accent); }
+    .phase-name { font-size: 20px; font-weight: 700; letter-spacing: -.025em; }
+    .phase-count { display: block; padding-left: 20px; margin-top: 5px; color: var(--muted); font-size: 13px; }
+    .phase-body { padding: 0 26px 26px; }
+    .phase-body > p { color: var(--muted); }
+    .tasks { list-style: none; margin: 22px 0; padding: 0; }
+    .tasks li { position: relative; border-top: 1px solid var(--line); padding: 15px 0 15px 31px; margin: 0; }
+    .tasks li::before { content: "○"; position: absolute; left: 0; top: 15px; color: var(--muted); font-size: 19px; line-height: 1.4; }
+    .tasks li[data-status="done"]::before { content: "✓"; color: var(--green); font-weight: 800; }
+    .tasks strong { display: block; font-size: 15px; }
+    .tasks p { font-size: 14px; color: var(--muted); margin: 5px 0 0; }
+    .task-status { font-size: 11px; font-weight: 750; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); }
+    [data-status="done"] .task-status { color: var(--green); }
+    .evidence { padding: 9px 12px; background: var(--green-soft); border-radius: 7px; }
+    .gate { padding: 15px 18px; background: var(--blue-soft); border-radius: 10px; font-size: 14px; }
+    .gate strong { color: var(--blue); }
+    .sources { font-size: 14px; }
+    footer { border-top: 1px solid var(--line); padding: 24px 0 42px; color: var(--muted); font-size: 13px; }
+    [hidden] { display: none !important; }
+    @media (max-width: 700px) {
+      .shell { padding-inline: 18px; }
+      header { padding-top: 35px; }
+      .grid { grid-template-columns: 1fr; }
+      .card { padding: 22px; }
+      summary { padding: 20px; }
+      .phase-body { padding: 0 20px 20px; }
+      .progress-top { flex-direction: column; gap: 2px; }
+      .toolbar { align-items: stretch; flex-direction: column; }
+      input { width: 100%; }
+    }
+    @media (prefers-reduced-motion: reduce) { html { scroll-behavior: auto; } }
+    @media print {
+      body { background: white; font-size: 11pt; }
+      .shell { max-width: none; padding: 0; }
+      .topbar, nav, .toolbar, .skip { display: none !important; }
+      header { padding: 0; }
+      h1 { font-size: 30pt; }
+      .progress-card { color: var(--ink); background: white; }
+      .progress-card .meta { color: var(--muted); }
+      section { margin-block: 24px; }
+      .grid { display: block; }
+      .grid .card { margin-bottom: 12px; }
+      summary { break-after: avoid; }
+      .tasks li, tr, .gate { break-inside: avoid; }
+      a { color: inherit; }
+    }
+  </style>
+</head>
+<body>
+  <a class="skip" href="#main">Skip to the plan</a>
+  <div class="shell">
+    <div class="topbar"><span class="brand">Skills Matching</span><span class="tag">Project plan · v1</span></div>
+    <header>
+      <div class="eyebrow">Transferable skills · Human review · Evidence first</div>
+      <h1>From experience<br>to opportunity.</h1>
+      <p class="lead">The agreed architecture and delivery checklist for an explainable military-to-civilian skills matching system. Build a complete, correctable journey; expand only after it works.</p>
+      <div class="tags"><span class="tag">React + TypeScript</span><span class="tag">Go</span><span class="tag">Python + Temporal</span><span class="tag">Postgres + pgvector</span><span class="tag">Gemini</span></div>
+      <nav aria-label="Plan sections"><a href="#progress">Progress</a><a href="#decisions">Decisions</a><a href="#architecture">Architecture</a><a href="#policy">Matching policy</a><a href="#roadmap">Delivery steps</a><a href="#verification">Verification</a><a href="#maintenance">Updating this plan</a></nav>
+    </header>
+    <main id="main">
+      <section id="progress" class="card progress-card" aria-labelledby="progress-title">
+        <div class="progress-top"><div><div class="meta">VERIFIED IMPLEMENTATION</div><h2 id="progress-title">Five stages. One working system.</h2></div><strong id="total-count">No steps verified yet</strong></div>
+        <progress id="overall-progress" value="0" max="1" aria-label="Verified implementation steps"></progress>
+        <p class="meta" id="progress-detail">Implementation has not started. Completion is recorded only after the relevant behavior and checks pass.</p>
+      </section>
+
+      <section id="decisions" aria-labelledby="decisions-title">
+        <div class="eyebrow">01 / Product baseline</div><h2 id="decisions-title">Decisions we have made</h2>
+        <div class="grid">
+          <article class="card"><h3>First delivery</h3><p>A working local prototype for candidates and advisers, using fictional profiles and vacancies with real processing. English first, covering varied military backgrounds through described experience.</p><p>Start with reviewed structured facts, then add automated extraction to the same journey. Stage 2 completes the AI prototype.</p></article>
+          <article class="card"><h3>Human control</h3><p>Advisers approve vacancies before publication. Candidates confirm inferred skills, correct their profile, inspect gaps, and rerun matching. Employers remain responsible for hiring decisions.</p><p>Recommendations are unranked and evidence-backed. There is no blended suitability score, automated rejection, or hiring decision.</p></article>
+        </div>
+        <ol class="journey" aria-label="Candidate journey"><li>Experience</li><li>Reviewed profile</li><li>Approved vacancy</li><li>Evidence comparison</li><li>Correction</li><li>Updated result</li></ol>
+        <p class="callout"><strong>Source of requirements:</strong> <a href="proposal.pdf">proposal.pdf</a> and the decisions recorded here. The agreed clarification extends “potential match, mandatory gap” to unmet negotiable requirements, even when they are not learnable.</p>
+        <p><strong>Deferred from the initial delivery:</strong> employer accounts, automated applications, vacancy scraping, scanned-document OCR, and broad multilingual support. EU hosting and real-data processing terms must be resolved before the pilot.</p>
+      </section>
+
+      <section id="architecture" aria-labelledby="architecture-title">
+        <div class="eyebrow">02 / System design</div><h2 id="architecture-title">Clear ownership across the system</h2>
+        <div class="table-wrap"><table><caption>Application components and boundaries</caption><thead><tr><th scope="col">Component</th><th scope="col">Responsibility</th></tr></thead><tbody>
+          <tr><td>React application</td><td>Candidate and adviser screens, review forms, evidence display, progress, and accessible recovery states. TypeScript and Vite.</td></tr>
+          <tr><td>Go API</td><td>Authentication, authorization, validation, domain commands, database writes, and public/internal APIs. Thin HTTP handlers over services and repositories; pgx, sqlc, and SQL migrations.</td></tr>
+          <tr><td>Go activity worker</td><td>Deterministic matching and evaluation persistence, reusing the backend domain code. A separate process from the same backend codebase.</td></tr>
+          <tr><td>Python Temporal worker</td><td>Workflow orchestration, local parsing/redaction, Gemini extraction, mapping suggestions, embeddings, and explanations. Python submits artifacts through the authenticated Go internal API.</td></tr>
+          <tr><td>PostgreSQL + pgvector</td><td>Profiles, versions, approved requirements, evidence links, embeddings, evaluations, reviews, processing status, and transactional outbox.</td></tr>
+          <tr><td>Private document storage</td><td>Original documents and processing artifacts. Private filesystem adapter locally; production object storage behind the same interface.</td></tr>
+          <tr><td>Temporal service</td><td>Durable execution, activity scheduling, retries, and execution history. Owns execution state; PostgreSQL owns application and human-review state.</td></tr>
+        </tbody></table></div>
+        <h3>Contracts and local runtime</h3>
+        <p>One repository with separated frontend, Go backend, Python worker, and shared contract packages. Group backend code by profiles, vacancies, matching, reviews, access, and processing. Share OpenAPI and JSON Schema contracts, generated language types, and runtime validation. Public routes use <code>/api/v1</code>; internal processing endpoints require distinct service authentication. Version Temporal payloads explicitly.</p>
+        <p>Run locally through Docker Compose with persistent Temporal development storage, PostgreSQL, private document storage, and a local OIDC identity provider with seeded candidate/adviser accounts. React proxies application requests to Go. Temporal and Postgres are sufficient for the initial workload; no additional broker, cache, or search service is planned.</p>
+        <h3>Durable data flow</h3>
+        <ol>
+          <li>The Go API commits an operation and an outbox entry together, then returns <code>202 Accepted</code> with an operation identifier.</li>
+          <li>A Go dispatcher starts Temporal with a stable operation-based workflow ID. Repeated delivery recognizes an existing execution; database idempotency outlives workflow-history retention.</li>
+          <li>Python orchestrates bounded activities. Go activities evaluate frozen inputs; Python activities access source artifacts and submit results through the internal API.</li>
+          <li>Activities persist idempotent outputs. The frontend polls application status and retrieves results from Go, independently of the Temporal UI.</li>
+        </ol>
+        <div class="grid">
+          <article class="card"><h3>Evidence and versions</h3><p>Keep documents/source segments, extracted assertions, candidate corrections, profile versions, vacancy versions/requirements, evaluations/findings, reviews/overrides/acknowledgements, and processing runs as distinct records.</p><p>Freeze the profile, vacancy, policy, taxonomy, model/prompt versions, and evaluation time for every comparison. Preserve provenance for candidate-added experience. Historical records remain immutable during retention, but remain subject to deletion.</p></article>
+          <article class="card"><h3>Privacy boundaries</h3><p>Parse and redact locally; obtain candidate approval of sanitized text before model calls, including embeddings. Redaction is fallible and requires review. Exclude raw service/discharge records.</p><p>Temporal receives opaque references, including activity results. Keep CV text, snippets, model output, credentials, and sensitive exception details out of histories, search attributes, and logs.</p></article>
+        </div>
+        <h3>Recovery and lifecycle rules</h3>
+        <ul>
+          <li>Use separate bounded workflows for document preparation, profile extraction, vacancy extraction, matching, explanations, and deletion. Human approvals live in PostgreSQL and start the next operation.</li>
+          <li>Use bounded activity timeouts, three attempts with exponential backoff for external AI calls, and limited concurrency. Invalid input and authorization errors are non-retryable.</li>
+          <li>Keep workflow code deterministic; perform file, network, and model operations in activities. Deduplicate persisted outputs and reuse completed artifacts. Repeated provider billing after an ambiguous failure cannot be ruled out.</li>
+          <li>Make exhausted retries visible with a safe retry path. Support bounded graceful shutdown and workflow replay/version compatibility.</li>
+          <li>A completed old evaluation cannot replace a newer profile’s current result. Acknowledgements and overrides attach to exact evaluations; material changes require reevaluation.</li>
+          <li>Deletion blocks access/new processing, cancels pending work, and removes sources and derived artifacts. Retrying work checks deletion state and cannot recreate removed data.</li>
+        </ul>
+      </section>
+
+      <section id="policy" aria-labelledby="policy-title">
+        <div class="eyebrow">03 / Matching contract</div><h2 id="policy-title">Rules and evidence determine the result</h2>
+        <p>Apply this precedence once inputs are ready. The initial threshold is evidence for at least two-thirds of approved core requirements; tune it through a versioned policy after pilot evaluation.</p>
+        <div class="table-wrap"><table><caption>Result precedence, evaluated from top to bottom</caption><thead><tr><th scope="col">Condition</th><th scope="col">Result</th></tr></thead><tbody>
+          <tr><td>Core evidence below two-thirds</td><td>No suitable match</td></tr>
+          <tr><td>Threshold reached; an unmet mandatory gate is fixed and non-learnable</td><td>Skills match, blocked by fixed requirement</td></tr>
+          <tr><td>Threshold reached; unmet mandatory gates are learnable or negotiable</td><td>Potential match, mandatory gap</td></tr>
+          <tr><td>Threshold reached; no mandatory gate is unmet</td><td>Potential match — prominently show any unverified requirements</td></tr>
+        </tbody></table></div>
+        <ul>
+          <li>Mandatory states are <strong>met, not met, unverified</strong>. Unknown information never counts as failure. Core evidence distinguishes stated, inferred awaiting confirmation, and not found; inferred skills count only after confirmation.</li>
+          <li>Store learnability independently from gate type (negotiable, fixed, unclear). An unmet negotiable requirement stays unmet until explicitly resolved. Show every mandatory gap even when one determines the headline result.</li>
+          <li>Advisers resolve ambiguous gates, duplicate/compound clauses, and requirements with alternatives before publication. Each approved core requirement counts once; “Python or Go” is one alternative requirement. A vacancy with no core requirements requires review.</li>
+          <li>Similarity and occupation crosswalks suggest connections, not proof of an individual skill. Preserve unresolved skills and their evidence. Do not assume military codes from different countries are equivalent.</li>
+          <li>Restricted experience stays self-attested and counts as neither met nor absent. Military training does not become a civilian certificate. Unknown duration or equivalence remains unverified. Career breaks are not penalized; matching uses years worked rather than career-gap dates.</li>
+          <li>Exclude protected identity information from skill matching. Ask eligibility questions only when declared by a vacancy and evaluate them separately. Flag proxy wording to the vacancy reviewer rather than applying it as a filter.</li>
+          <li>Evaluate every approved vacancy in the prototype catalogue. Use exact vector search for suggested skill connections. Display unranked results with status filters and stable ordering.</li>
+          <li>Only show a catalogue-wide no-match conclusion after the frozen vacancy set has been evaluated successfully. Processing failure means unavailable/incomplete, not unsuitable.</li>
+          <li>The evidence table is the canonical explanation. Gemini summarizes completed findings; validate schemas, references, and consistency, falling back to deterministic text. Citation validation alone does not prove semantic correctness; sample explanations for human review.</li>
+          <li>Adviser overrides preserve the machine evaluation and add a separately reasoned recommendation. Corrections to underlying facts create a new version and rerun.</li>
+        </ul>
+      </section>
+
+      <section id="roadmap" aria-labelledby="roadmap-title">
+        <div class="eyebrow">04 / Delivery checklist</div><h2 id="roadmap-title">Build in complete, verifiable stages</h2>
+        <p>Each stage includes its frontend, API, persistence, and applicable worker behavior. Sequence is governed by acceptance gates, not promised calendar dates. Progress counts verified steps equally; it is not an estimate of effort or time remaining.</p>
+        <div class="toolbar" id="tools" hidden>
+          <label for="search">Find a step</label><input id="search" type="search" placeholder="e.g. evidence, retries, consent">
+          <label for="status-filter">Show</label><select id="status-filter"><option value="all">All steps</option><option value="planned">Remaining steps</option><option value="done">Verified steps</option></select>
+          <button id="expand" type="button">Expand all</button><button id="collapse" type="button">Collapse all</button>
+        </div>
+        <p id="filter-summary" class="meta" aria-live="polite" hidden></p>
+
+        <details class="phase" id="stage-1" open>
+          <summary><span class="phase-name">01 — Working matching core</span><span class="phase-count">Planned · First complete candidate/adviser journey</span></summary>
+          <div class="phase-body"><p>Build a useful product with manually supplied structured facts, real matching, and durable execution. Three fictional candidates include two plausible matches and one correctly returning no suitable match.</p>
+            <ul class="tasks">
+              <li data-task="s1-foundation"><strong>Establish repository boundaries and local development</strong><p>Separate frontend, Go API/activity worker, Python workflows, and contracts. Add Compose, migrations, environment examples, startup/seed commands, and health/readiness checks.</p></li>
+              <li data-task="s1-contracts"><strong>Define versioned interfaces and domain records</strong><p>Implement OpenAPI/JSON Schema contracts, generated types, validation, consistent error shapes, and the evidence/version records described above.</p></li>
+              <li data-task="s1-access"><strong>Implement candidate and adviser access</strong><p>Configure local OIDC, seeded accounts, server-side authorization, candidate isolation, and assigned-adviser access. Keep service credentials separate.</p></li>
+              <li data-task="s1-profile"><strong>Create and review structured candidate profiles</strong><p>Support roles, skills, tools, qualifications, languages, and duration. Record provenance, confirmations/rejections, and timestamped corrections without rewriting sources.</p></li>
+              <li data-task="s1-vacancies"><strong>Create, review, and publish structured vacancies</strong><p>Capture source clauses, mandatory/core/desirable requirements, AND/OR relationships, learnability, and gate type. Resolve ambiguities before publishing immutable versions.</p></li>
+              <li data-task="s1-policy"><strong>Implement the deterministic Go matching policy</strong><p>Cover the four result states, threshold boundaries, distinct evidence states, gap precedence, and the negotiated-gate clarification. Preserve findings for every requirement.</p></li>
+              <li data-task="s1-durable"><strong>Connect matching through Temporal and the outbox</strong><p>Commit operation/outbox together, start workflows with stable IDs, schedule Go matching activities from Python, persist idempotent results, and expose processing status.</p></li>
+              <li data-task="s1-results"><strong>Build evidence results and correction/rerun screens</strong><p>Show mandatory readiness separately from core skills, expand clause/snippet evidence, render deterministic explanations, and support unranked filtering and historical results.</p></li>
+              <li data-task="s1-fixtures"><strong>Establish independently specified fictional examples</strong><p>Use three candidates and enough vacancies to exercise all four states. Define expected requirement findings and verify that a profile correction changes the appropriate result.</p></li>
+              <li data-task="s1-acceptance"><strong>Verify the complete matching-core journey</strong><p>Pass applicable formatting, lint, type, unit, integration, contract, migration, worker, and build checks. Demonstrate real UI → API → persistence → Temporal → result behavior.</p></li>
+            </ul>
+            <div class="gate"><strong>Exit gate:</strong> Candidates and advisers can produce, inspect, correct, and reproduce real comparisons. All four states have independent expected examples; no scripted results or unverified jobs.</div>
+          </div>
+        </details>
+
+        <details class="phase" id="stage-2">
+          <summary><span class="phase-name">02 — Working AI prototype</span><span class="phase-count">Planned · Depends on stage 1</span></summary>
+          <div class="phase-body"><p>Add automated preparation and extraction to the established evidence and review workflow. This stage completes the agreed local AI prototype.</p>
+            <ul class="tasks">
+              <li data-task="s2-documents"><strong>Prepare text PDFs and pasted text</strong><p>Validate and bound inputs, store private documents, parse locally, and create stable source segments. Give encrypted, scanned, or unsupported files a pasted-text/manual-entry recovery path.</p></li>
+              <li data-task="s2-redaction"><strong>Redact locally and review sanitized input</strong><p>Exclude sensitive content before external calls. Require candidate approval of sanitized text; apply that boundary to embeddings as well. Never ingest raw service/discharge records.</p></li>
+              <li data-task="s2-gemini"><strong>Integrate Gemini behind a provider interface</strong><p>Implement schema-validated extraction/explanation calls and embeddings. Explicitly configure and record model/prompt versions, bounded timeouts, three-attempt backoff, and concurrency limits.</p></li>
+              <li data-task="s2-profile-extraction"><strong>Extract source-linked candidate assertions</strong><p>Validate source references and distinguish stated facts from proposed inferences. Add review screens for confirmations, rejections, and corrections that feed versioned profiles.</p></li>
+              <li data-task="s2-taxonomies"><strong>Import versioned ESCO/O*NET data and mappings</strong><p>Preserve dataset releases, attribution, and crosswalk provenance; verify release compatibility. Retain unresolved skills instead of treating missing taxonomy coverage as absent experience.</p></li>
+              <li data-task="s2-transfer"><strong>Suggest transferable skills with evidence</strong><p>Use embeddings and occupation mappings to propose connections, require confirmation for inferred transfers, and keep professional qualifications and restricted claims distinct.</p></li>
+              <li data-task="s2-vacancy-extraction"><strong>Extract draft vacancy requirements for advisers</strong><p>Link clauses, classify requirements, flag proxy wording, and expose coverage/ambiguity review. Publication remains an explicit adviser action.</p></li>
+              <li data-task="s2-catalogue"><strong>Evaluate the complete approved catalogue</strong><p>Freeze vacancy versions for each run; compare every approved vacancy and use exact vector retrieval for skill suggestions. Do not exclude opportunities through approximate retrieval.</p></li>
+              <li data-task="s2-explanations"><strong>Generate and check plain-language explanations</strong><p>Generate only from completed findings; check evidence references and consistency. Preserve deterministic fallback text and perform sampled human checks for unsupported claims.</p></li>
+              <li data-task="s2-acceptance"><strong>Verify the uploaded-document journey</strong><p>Run fictional CV → sanitized approval → extraction → profile review → approved vacancy → comparison → correction → rerun. Rejecting an inferred skill must update the result correctly.</p></li>
+            </ul>
+            <div class="gate"><strong>Exit gate:</strong> Fictional uploads complete the real AI journey. The no-match case is correct, all claims are traceable, and extraction failures never become unsuitable-candidate outcomes.</div>
+          </div>
+        </details>
+
+        <details class="phase" id="stage-3">
+          <summary><span class="phase-name">03 — Adviser and reliability completion</span><span class="phase-count">Planned · Depends on stage 2</span></summary>
+          <div class="phase-body"><p>Complete review operations and prove the system behaves correctly when processing is interrupted, repeated, or overtaken by a correction.</p>
+            <ul class="tasks">
+              <li data-task="s3-review"><strong>Complete the adviser review workspace</strong><p>Provide review queues, evidence inspection, reasoned recommendation overrides, and correction/rerun actions. Preserve the original machine evaluation.</p></li>
+              <li data-task="s3-gaps"><strong>Implement warn-and-proceed acknowledgements</strong><p>Show every mandatory gap before proceeding. Allow correction/rerun and log acknowledgement of remaining gaps against the exact evaluation; avoid ineffective advice for fixed gaps.</p></li>
+              <li data-task="s3-stale"><strong>Prevent stale results from replacing current results</strong><p>Freeze input versions, separate historical/current evaluations, reject stale publication updates, and require new acknowledgement after material input changes.</p></li>
+              <li data-task="s3-recovery"><strong>Complete retry, failure, and shutdown behavior</strong><p>Deduplicate results, reuse completed artifacts, classify permanent/transient errors, show exhausted failures with safe retries, and support bounded graceful shutdown and restart recovery.</p></li>
+              <li data-task="s3-replay"><strong>Verify workflow evolution and cross-language payloads</strong><p>Test Go/Python serialization contracts, workflow replay against saved histories, and compatible activity/workflow version changes.</p></li>
+              <li data-task="s3-deletion"><strong>Implement deletion across sources and derived data</strong><p>Block access and processing first, cancel pending work, remove documents/assertions/embeddings/explanations, and prevent in-flight retries from recreating deleted data.</p></li>
+              <li data-task="s3-observability"><strong>Make operations diagnosable without sensitive logs</strong><p>Record request/job correlation, attempts, timing, safe failure codes, outbox age, provider latency/cost, and worker health. Keep sensitive payloads out of Temporal and logs.</p></li>
+              <li data-task="s3-usability"><strong>Complete accessible review and recovery states</strong><p>Adapt the supplied design reference for readable forms and evidence tables. Cover keyboard/screen reader, mobile, low bandwidth, loading, empty, validation, unauthorized, and unavailable states.</p></li>
+              <li data-task="s3-acceptance"><strong>Pass resilience and isolation acceptance checks</strong><p>Exercise crash-after-commit, duplicate delivery, worker restart, provider outage, partial completion, stale correction, deletion races, and unauthorized candidate/adviser/service access.</p></li>
+            </ul>
+            <div class="gate"><strong>Exit gate:</strong> Recovery, permissions, review history, and user-visible status are verified across the full stack. A shared fictional-data demonstration can now be prepared.</div>
+          </div>
+        </details>
+
+        <details class="phase" id="stage-4">
+          <summary><span class="phase-name">04 — Pilot readiness and evaluation</span><span class="phase-count">Planned · Depends on stage 3 and external reviews</span></summary>
+          <div class="phase-body"><p>Prepare for the proposal’s indicative pilot of 20–30 volunteers and 30–50 civilian vacancies. Real personal data is admitted only after every go-live condition passes.</p>
+            <ul class="tasks">
+              <li data-task="s4-scope"><strong>Agree pilot scope, data terms, and vacancy supply</strong><p>Confirm the NSPA sponsor/adviser workflow, volunteer participation, curated or NSPA-supplied vacancies, responsibilities, and provider/data-processing terms.</p></li>
+              <li data-task="s4-deployment"><strong>Deploy and harden the EU runtime</strong><p>Select the hosting provider and production identity/storage configuration. Separate environments and secrets, restrict access, protect uploads/endpoints, configure backups, and verify restoration.</p></li>
+              <li data-task="s4-consent"><strong>Complete consent, retention, and candidate notices</strong><p>Implement approved notices, deletion/retention controls, and auditable consent. Keep optional demographic monitoring outside matching and independent of service/employer-sharing access.</p></li>
+              <li data-task="s4-impact"><strong>Complete external legal and data-protection review</strong><p>Have the combined DPIA/impact assessment reviewed by counsel and NSPA’s data-protection contact. Validate current requirements and approve candidate notice/consent before go-live.</p></li>
+              <li data-task="s4-accessibility"><strong>Pass the external accessibility audit</strong><p>Target WCAG 2.2 AA, verify keyboard/screen-reader and mobile behavior, and resolve all blocking findings before real participants use the system.</p></li>
+              <li data-task="s4-fairness"><strong>Pass fairness and explanation review</strong><p>Run identity swaps and same-facts plain/non-native rewrites through the full pipeline. Require unchanged result states and no unsupported claims in sampled explanations; resolve failures first.</p></li>
+              <li data-task="s4-security"><strong>Pass the security review</strong><p>Include prompt injection in CV/vacancy text, authorization, uploads, credentials, protected data boundaries, logs, and Temporal payloads. Resolve blocking findings.</p></li>
+              <li data-task="s4-operations"><strong>Establish monitoring and incident procedures</strong><p>Monitor failures, queue/outbox delays, provider use, correction patterns, and audit events. Document migrations, rollback, restoration, incident response, and sampled adviser review.</p></li>
+              <li data-task="s4-evaluation"><strong>Run and evaluate the pilot</strong><p>Conduct weekly log/adviser reviews. Measure relevance, mandatory-requirement detection, time to three useful roles, fairness stability, false positives, unsupported claims, and correction patterns.</p></li>
+            </ul>
+            <div class="gate"><strong>Go-live gate:</strong> Approved impact/data-protection review, candidate notice/consent, external accessibility audit without blockers, fairness stability, sampled explanations without unsupported claims, and security review. Any failed condition blocks real-data deployment.</div>
+            <p class="meta">Pilot targets remain assumptions: 80% relevant roles, 95% mandatory requirements detected, 50% shorter median shortlist time, and 100% unchanged result states under both perturbations. The cohort is too small for broad effectiveness claims.</p>
+          </div>
+        </details>
+
+        <details class="phase" id="stage-5">
+          <summary><span class="phase-name">05 — Employer access and expansion</span><span class="phase-count">Planned · Depends on pilot findings</span></summary>
+          <div class="phase-body"><p>Extend the verified candidate/adviser system while preserving consent, evidence, and the separation of eligibility from skills.</p>
+            <ul class="tasks">
+              <li data-task="s5-sharing"><strong>Add employer-specific sharing and revocation</strong><p>Require separate opt-in per employer, restrict the shared evidence projection, test revocation, and never condition candidate service access on sharing consent.</p></li>
+              <li data-task="s5-employer"><strong>Build the unranked employer evidence view</strong><p>Show consented evidence and named gaps without a suitability score or automatic rejection. For negotiable-gate sharing, show the gate and skills evidence, never nationality.</p></li>
+              <li data-task="s5-authoring"><strong>Add the vacancy-author workflow</strong><p>Let authors respond to flagged wording and maintain requirements through the approved publication/versioning process. Preserve an auditable history of changes.</p></li>
+              <li data-task="s5-language"><strong>Extend language coverage after evaluation</strong><p>Add selected languages with appropriate extraction, terminology, translation, accessible presentation, and full-pipeline fairness/quality checks.</p></li>
+              <li data-task="s5-integrations"><strong>Add validated integrations and measured scaling</strong><p>Choose integrations from pilot needs. Change retrieval/indexing or infrastructure only with measured performance and recall checks; reevaluate model and taxonomy upgrades before release.</p></li>
+              <li data-task="s5-acceptance"><strong>Verify expansion without weakening the core</strong><p>Pass employer consent/isolation/revocation tests and the relevant language, model, taxonomy, contract, migration, reliability, and end-to-end regression suites.</p></li>
+            </ul>
+            <div class="gate"><strong>Exit gate:</strong> Employer access is consented and revocable; each added language or integration has its own verified behavior and regression evidence.</div>
+          </div>
+        </details>
+      </section>
+
+      <section id="verification" aria-labelledby="verification-title">
+        <div class="eyebrow">05 / Definition of done</div><h2 id="verification-title">What must be true before a step is complete</h2>
+        <div class="grid">
+          <article class="card"><h3>Behavior and evidence</h3><ul><li>Normal and failure paths work across every affected component.</li><li>Thresholds, overlapping/unknown/negotiable gates, AND/OR requirements, restricted experience, and qualification distinctions are covered.</li><li>Invalid citations, rejected inferences, unresolved mappings, and changed input versions are exercised.</li><li>Fairness checks cover the complete extraction-to-result pipeline.</li></ul></article>
+          <article class="card"><h3>Engineering checks</h3><ul><li>Frontend formatting, lint, type checking, unit tests, and production build.</li><li>Backend formatting, lint/static/type checks, unit and integration tests, and build.</li><li>Worker retry, failure, idempotency, shutdown, and replay tests.</li><li>Applicable database migration and API/cross-language contract checks.</li><li>Documentation, environment examples, operational instructions, and this checklist updated.</li></ul></article>
+        </div>
+        <p>Follow <a href="../AGENTS.md">AGENTS.md</a>: work on a feature/fix/chore branch, preserve unrelated changes, run all affected checks before merging, use focused commits, and merge completed work with a non-fast-forward merge before deleting the feature branch. Never mark shells, placeholders, or unverified jobs complete.</p>
+      </section>
+
+      <section id="maintenance" class="card" aria-labelledby="maintenance-title">
+        <div class="eyebrow">Living document</div><h2 id="maintenance-title">Keep progress tied to verified work</h2>
+        <p>This file is self-contained and opens directly in a browser. Status comes from the <code>DONE</code> set near the end of its source, not browser-local storage. Every checklist item has a stable <code>data-task</code> identifier.</p>
+        <ol><li>Implement the step and run the applicable checks.</li><li>Add its identifier to <code>DONE</code> and record concise test/review evidence under the same key in <code>VERIFICATION</code>.</li><li>Commit the progress update with the completed work on its feature branch. Reopen this page to see updated totals.</li></ol>
+        <p>All stages start planned. Creating this plan does not count as completed implementation. Phase counts and the overall progress bar are calculated from verified checklist items; an acceptance step must pass before its stage is complete.</p>
+        <p id="tracking-error" role="alert" hidden></p>
+        <noscript><p>JavaScript is disabled. The complete plan and checklists remain readable; computed status and filtering require JavaScript. Consult the DONE set in the file source for recorded progress.</p></noscript>
+        <h3>Reference material</h3>
+        <ul class="sources"><li><a href="proposal.pdf">Project proposal</a> · <a href="../design/DESIGN.md">Supplied design system</a> · <a href="../design/code.html">Visual reference</a></li><li><a href="https://esco.ec.europa.eu/en/use-esco/other-crosswalks">ESCO occupation crosswalks</a> · <a href="https://github.com/pgvector/pgvector">pgvector exact and approximate search</a></li><li><a href="https://docs.temporal.io/develop/go/data-handling">Temporal payload handling</a> · <a href="https://docs.temporal.io/develop/python/best-practices/error-handling">Activity retry and idempotency</a> · <a href="https://docs.temporal.io/develop/python/workflows/versioning">Workflow versioning</a></li><li><a href="https://ai.google.dev/gemini-api/docs/structured-output">Gemini structured outputs</a> · <a href="https://docs.sqlc.dev/en/stable/tutorials/getting-started-postgresql.html">Go/Postgres data access</a></li></ul>
+      </section>
+    </main>
+    <footer>Agreed baseline · <time datetime="2026-10-06">6 October 2026</time> · Fictional-data prototype first. External pilot reviews remain required.</footer>
+  </div>
+  <script>
+    "use strict";
+
+    // AUTHORITATIVE PROGRESS: add IDs only after implementation AND verification.
+    // Record matching evidence in VERIFICATION and commit both with the feature.
+    // Example format only: "s1-foundation": "Checks run, result, and review reference".
+    const DONE = new Set([]);
+    const VERIFICATION = {};
+
+    const tasks = Array.from(document.querySelectorAll("[data-task]"));
+    const phases = Array.from(document.querySelectorAll("details.phase"));
+    const ids = new Set(tasks.map(task => task.dataset.task));
+    const trackingProblems = [];
+    if (ids.size !== tasks.length) trackingProblems.push("Duplicate task identifiers.");
+    for (const id of DONE) {
+      if (!ids.has(id)) trackingProblems.push(`Unknown completed step: ${id}.`);
+      if (typeof VERIFICATION[id] !== "string" || !VERIFICATION[id].trim()) {
+        trackingProblems.push(`Missing verification evidence for ${id}.`);
+      }
+    }
+    for (const id of Object.keys(VERIFICATION)) {
+      if (!DONE.has(id)) trackingProblems.push(`Verification evidence without a DONE entry: ${id}.`);
+    }
+    const valid = trackingProblems.length === 0;
+    if (!valid) {
+      const error = document.getElementById("tracking-error");
+      error.hidden = false;
+      error.textContent = `Progress configuration needs correction: ${trackingProblems.join(" ")} No completion is counted until this is fixed.`;
+    }
+    for (const task of tasks) {
+      const done = valid && DONE.has(task.dataset.task);
+      task.dataset.status = done ? "done" : "planned";
+      const status = document.createElement("span");
+      status.className = "task-status";
+      status.textContent = `${task.dataset.task} · ${done ? "Verified" : "Planned"}`;
+      task.prepend(status);
+      if (done) {
+        const evidence = document.createElement("p");
+        evidence.className = "evidence";
+        evidence.textContent = `Verification: ${VERIFICATION[task.dataset.task]}`;
+        task.append(evidence);
+      }
+    }
+    const verifiedCount = tasks.filter(task => task.dataset.status === "done").length;
+    const percent = Math.round(verifiedCount / tasks.length * 100);
+    document.getElementById("total-count").textContent = `${verifiedCount} / ${tasks.length} steps`;
+    const overallProgress = document.getElementById("overall-progress");
+    overallProgress.max = tasks.length;
+    overallProgress.value = verifiedCount;
+    overallProgress.setAttribute("aria-valuetext", `${verifiedCount} of ${tasks.length} steps verified`);
+    let completePhases = 0;
+    for (const phase of phases) {
+      const items = Array.from(phase.querySelectorAll("[data-task]"));
+      const count = items.filter(item => item.dataset.status === "done").length;
+      const complete = count === items.length;
+      if (complete) completePhases += 1;
+      phase.querySelector(".phase-count").textContent = `${count} / ${items.length} steps verified · ${complete ? "Stage complete" : count ? "Partially verified" : "Planned"}`;
+    }
+    document.getElementById("progress-detail").textContent = valid
+      ? `${percent}% of checklist steps verified · ${completePhases} / ${phases.length} stages complete. ${verifiedCount ? "Only completed, verified work is counted." : "Implementation has not started; all delivery steps remain planned."}`
+      : "Progress configuration is invalid. See Updating this plan for details; no completion is counted.";
+
+    const search = document.getElementById("search");
+    const statusFilter = document.getElementById("status-filter");
+    const filterSummary = document.getElementById("filter-summary");
+    const initialOpenState = new Map(phases.map(phase => [phase, phase.open]));
+    function filterSteps() {
+      const query = search.value.trim().toLowerCase();
+      const status = statusFilter.value;
+      const filtered = Boolean(query) || status !== "all";
+      let visible = 0;
+      for (const task of tasks) {
+        const matches = (!query || task.textContent.toLowerCase().includes(query)) && (status === "all" || task.dataset.status === status);
+        task.hidden = !matches;
+        if (matches) visible += 1;
+      }
+      for (const phase of phases) {
+        phase.hidden = !Array.from(phase.querySelectorAll("[data-task]")).some(task => !task.hidden);
+        phase.open = filtered ? !phase.hidden : initialOpenState.get(phase);
+      }
+      filterSummary.hidden = false;
+      filterSummary.textContent = `${visible} of ${tasks.length} steps shown.${visible ? "" : " No steps match this filter."}`;
+    }
+    search.addEventListener("input", filterSteps);
+    statusFilter.addEventListener("change", filterSteps);
+    document.getElementById("expand").addEventListener("click", () => phases.forEach(phase => { if (!phase.hidden) phase.open = true; }));
+    document.getElementById("collapse").addEventListener("click", () => phases.forEach(phase => { phase.open = false; }));
+    document.getElementById("tools").hidden = false;
+
+    // Print the whole plan, including collapsed or filtered steps, then restore the view.
+    let printState;
+    window.addEventListener("beforeprint", () => {
+      if (printState) return;
+      printState = { phases: phases.map(phase => ({ open: phase.open, hidden: phase.hidden })), tasks: tasks.map(task => task.hidden), summary: filterSummary.hidden };
+      phases.forEach(phase => { phase.open = true; phase.hidden = false; });
+      tasks.forEach(task => { task.hidden = false; });
+      filterSummary.hidden = true;
+    });
+    window.addEventListener("afterprint", () => {
+      if (!printState) return;
+      phases.forEach((phase, index) => { phase.open = printState.phases[index].open; phase.hidden = printState.phases[index].hidden; });
+      tasks.forEach((task, index) => { task.hidden = printState.tasks[index]; });
+      filterSummary.hidden = printState.summary;
+      printState = undefined;
+    });
+  </script>
+</body>
+</html>
