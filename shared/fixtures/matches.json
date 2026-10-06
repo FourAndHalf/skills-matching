@@ -1,0 +1,5 @@
+[
+  { "id": "ops-coordinator", "title": "Operations Coordinator", "company": "Northstar Logistics", "status": "strong_match", "score": 92 },
+  { "id": "programme-delivery", "title": "Programme Delivery Manager", "company": "Civic Bridge", "status": "potential_match", "score": 78 },
+  { "id": "resilience-lead", "title": "Security & Resilience Lead", "company": "Haven Systems", "status": "mandatory_gap", "score": 64 }
+]

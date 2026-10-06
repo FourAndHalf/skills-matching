@@ -1,0 +1,14 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://skills-matching.local/contracts/matching.schema.json",
+  "title": "Matching result",
+  "type": "object",
+  "required": ["status", "score", "evidence"],
+  "properties": {
+    "status": { "enum": ["strong_match", "potential_match", "mandatory_gap", "no_match"] },
+    "score": { "type": "integer", "minimum": 0, "maximum": 100 },
+    "evidence": { "type": "array", "items": { "type": "string" } },
+    "gaps": { "type": "array", "items": { "type": "string" } }
+  },
+  "additionalProperties": false
+}

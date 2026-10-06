@@ -1,0 +1,52 @@
+# Dependencies
+node_modules/
+
+# Frontend build and tooling output
+frontend/dist/
+frontend/.vite/
+*.tsbuildinfo
+coverage/
+
+# Go build output and local caches
+bin/
+*.exe
+*.test
+*.out
+.cache/
+
+# Python bytecode and environments
+__pycache__/
+*.py[cod]
+*$py.class
+.venv/
+venv/
+env/
+.pytest_cache/
+
+# Environment and local secrets
+.env
+.env.*
+!.env.example
+*.local
+
+# Local application data
+tmp/
+data/
+*.sqlite
+*.sqlite3
+
+# Logs
+*.log
+logs/
+
+# OS and editor files
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# Docker overrides
+compose.override.yaml
+docker-compose.override.yml
